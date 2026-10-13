@@ -104,6 +104,30 @@ Assessment rules:
             raise ValueError("The AI returned an empty response.")
 
         analysis = RiskAnalysis.model_validate_json(content)
+                # Apply deterministic checks to avoid misleading LOW assessments.
+        recipient = payment.recipient.strip().lower()
+
+        if recipient in {"unknown", "n/a", "none", "not provided"}:
+            analysis.risk_level = "UNCERTAIN"
+
+            if not any(
+                "recipient identity" in warning.lower()
+                for warning in analysis.warning_signs
+            ):
+                analysis.warning_signs.append(
+                    "Recipient identity has not been established"
+                )
+
+            analysis.explanation = (
+                "The recipient's identity has not been established. "
+                "This does not prove fraud, but there is insufficient "
+                "information to assess the payment reliably."
+            )
+
+            analysis.recommended_action = (
+                "Verify the recipient's identity and payment details "
+                "through an independent, trusted channel before proceeding."
+            )
         return PaymentAnalysisResponse(
             status="success",
             risk_level=analysis.risk_level,
