@@ -3,3 +3,4 @@ uvicorn[standard]
 ollama
 pytest
 httpx
+python-dotenv

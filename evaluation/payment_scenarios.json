@@ -1,0 +1,131 @@
+{
+  "dataset_name": "TRUSTFLOW AI Payment Risk Evaluation",
+  "version": "1.0",
+  "model": "qwen3:1.7b",
+  "purpose": "Evaluate payment risk classification consistency, warning detection, and recommended actions.",
+  "scenarios": [
+    {
+      "id": "PAY001",
+      "category": "low_risk",
+      "description": "Verified supplier with matching purchase order",
+      "invoice_description": "Monthly office stationery supply",
+      "amount": 2500,
+      "currency": "INR",
+      "recipient": "ABC Office Supplies",
+      "warning_details": "A detailed invoice is available. The recipient is verified, bank details are verified, the amount matches the purchase order, and there is no unusual payment pressure.",
+      "expected_risk_level": "LOW",
+      "expected_warning_signs": [],
+      "required_behaviors": [
+        "Recognizes positive verification evidence",
+        "Avoids inventing suspicious behavior",
+        "Provides a reasonable recommendation"
+      ]
+    },
+    {
+      "id": "PAY002",
+      "category": "medium_risk",
+      "description": "Established supplier with an incomplete invoice",
+      "invoice_description": "Consulting services",
+      "amount": 25000,
+      "currency": "INR",
+      "recipient": "ABC Consulting",
+      "warning_details": "The invoice is missing a detailed breakdown of services. The supplier is established, the amount matches the purchase order, and there is no unusual urgency or bank-detail change.",
+      "expected_risk_level": "MEDIUM",
+      "expected_warning_signs": [
+        "Missing detailed invoice breakdown"
+      ],
+      "required_behaviors": [
+        "Identifies incomplete invoice documentation",
+        "Considers the established supplier and matching purchase order",
+        "Avoids assigning HIGH risk without sufficient justification",
+        "Recommends obtaining the missing information"
+      ]
+    },
+    {
+      "id": "PAY003",
+      "category": "high_risk",
+      "description": "Unverified bank-account change with payment pressure",
+      "invoice_description": "Payment for office equipment",
+      "amount": 85000,
+      "currency": "INR",
+      "recipient": "ABC Office Supplies",
+      "warning_details": "The recipient has emailed new bank account details. The new details differ from those on the previously verified invoice and have not been independently verified. The sender demands immediate payment.",
+      "expected_risk_level": "HIGH",
+      "expected_warning_signs": [
+        "Bank-account change without verification",
+        "Urgent payment demand"
+      ],
+      "required_behaviors": [
+        "Identifies the unverified bank-account change",
+        "Recognizes payment pressure",
+        "Recommends stopping payment until verification",
+        "Avoids claiming fraud is confirmed"
+      ]
+    },
+    {
+      "id": "PAY004",
+      "category": "high_risk",
+      "description": "Unknown recipient, incomplete invoice, and urgent payment",
+      "invoice_description": "Urgent laptop repair",
+      "amount": 50000,
+      "currency": "INR",
+      "recipient": "Unknown",
+      "warning_details": "The invoice lacks sufficient detail, the recipient is unknown, and the sender demands immediate payment without proper documentation.",
+      "expected_risk_level": "HIGH",
+      "expected_warning_signs": [
+        "Unknown recipient",
+        "Missing detailed invoice",
+        "Urgent payment demand"
+      ],
+      "required_behaviors": [
+        "Identifies the missing recipient and invoice information",
+        "Recognizes the combined warning signs",
+        "Recommends independent verification",
+        "Does not claim fraud is confirmed"
+      ]
+    },
+    {
+      "id": "PAY005",
+      "category": "medium_risk",
+      "description": "Unknown recipient with missing contact information but no additional warning signs",
+      "invoice_description": "Routine office stationery",
+      "amount": 2500,
+      "currency": "INR",
+      "recipient": "Unknown",
+      "warning_details": "The recipient's legal business name and contact information are unavailable. The invoice description is clear. There is no reported payment pressure, bank-detail change, unusual urgency, or other suspicious activity.",
+      "expected_risk_level": "MEDIUM",
+      "expected_warning_signs": [
+        "Unknown recipient",
+        "Missing recipient business and contact information"
+      ],
+      "required_behaviors": [
+        "Identifies missing recipient information",
+        "Accounts for the absence of additional warning signs",
+        "Avoids automatically assigning HIGH risk",
+        "Recommends independent verification"
+      ]
+    },
+    {
+      "id": "PAY006",
+      "category": "high_risk",
+      "description": "Unverified bank-account change, immediate payment demand, and discouraged verification",
+      "invoice_description": "Urgent office equipment payment",
+      "amount": 85000,
+      "currency": "INR",
+      "recipient": "ABC Office Supplies",
+      "warning_details": "The recipient requests payment to a new bank account that differs from the previously verified invoice. The recipient demands immediate payment and discourages independent verification.",
+      "expected_risk_level": "HIGH",
+      "expected_warning_signs": [
+        "Unverified bank-account change",
+        "Urgent payment demand",
+        "Discouragement of independent verification"
+      ],
+      "required_behaviors": [
+        "Identifies all three warning signs",
+        "Explains why the transaction is suspicious",
+        "Recommends stopping payment until independent verification",
+        "Distinguishes suspicious circumstances from confirmed fraud"
+      ]
+    }
+  ]
+}

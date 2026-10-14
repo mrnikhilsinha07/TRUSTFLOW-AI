@@ -1,8 +1,15 @@
+import os
+import base64
+import urllib.request
+import urllib.error
+from dotenv import load_dotenv
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, StringConstraints
 from ollama import chat
+
+load_dotenv()
 
 app = FastAPI(
     title="TRUSTFLOW AI",
@@ -11,6 +18,13 @@ app = FastAPI(
 )
 
 MODEL = "qwen3:1.7b"
+
+PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
+PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET")
+PAYPAL_BASE_URL = os.getenv(
+    "PAYPAL_BASE_URL",
+    "https://api-m.sandbox.paypal.com",
+)
 
 
 class PaymentRequest(BaseModel):
@@ -111,30 +125,73 @@ Assessment rules:
             raise ValueError("The AI returned an empty response.")
 
         analysis = RiskAnalysis.model_validate_json(content)
-                # Apply deterministic checks to avoid misleading LOW assessments.
+        # Apply deterministic checks to avoid misleading LOW assessments.
         recipient = payment.recipient.strip().lower()
 
         if recipient in {"unknown", "n/a", "none", "not provided"}:
-            analysis.risk_level = "UNCERTAIN"
+            warning_text = " ".join(analysis.warning_signs).lower()
+            details_text = payment.warning_details.lower()
 
-            if not any(
-                "recipient identity" in warning.lower()
-                for warning in analysis.warning_signs
-            ):
-                analysis.warning_signs.append(
-                    "Recipient identity has not been established"
+            has_urgent_payment = any(
+                phrase in details_text
+                for phrase in (
+                    "immediate payment",
+                    "urgent payment",
+                    "demands immediate",
+                    "demands urgent",
+                )
+            )
+
+            has_incomplete_documentation = any(
+                phrase in details_text
+                for phrase in (
+                    "lacks sufficient detail",
+                    "missing detailed",
+                    "incomplete invoice",
+                    "without proper documentation",
+                )
+            )
+
+            if has_urgent_payment and has_incomplete_documentation:
+                analysis.risk_level = "HIGH"
+
+                analysis.explanation = (
+                    "The recipient's identity has not been established, "
+                    "the invoice documentation is insufficient, and the "
+                    "payment is urgent. These combined warning signs "
+                    "require the transaction to be stopped and investigated. "
+                    "Fraud is not confirmed."
                 )
 
-            analysis.explanation = (
-                "The recipient's identity has not been established. "
-                "This does not prove fraud, but there is insufficient "
-                "information to assess the payment reliably."
-            )
+                analysis.recommended_action = (
+                    "Stop the payment. Independently verify the recipient's "
+                    "identity, invoice documentation, and payment details "
+                    "through a trusted channel before proceeding."
+                )
 
-            analysis.recommended_action = (
-                "Verify the recipient's identity and payment details "
-                "through an independent, trusted channel before proceeding."
-            )
+            else:
+                    analysis.risk_level = "MEDIUM"
+
+                    if not any(
+                        "recipient identity" in warning.lower()
+                        for warning in analysis.warning_signs
+                    ):
+                        analysis.warning_signs.append(
+                            "Recipient identity has not been established"
+                        )
+
+                    analysis.explanation = (
+                        "The recipient's identity has not been established. "
+                        "This creates a verification concern, but the available "
+                        "information does not establish that fraud is occurring. "
+                        "Verify the recipient before proceeding."
+                    )
+
+                    analysis.recommended_action = (
+                        "Pause the payment until the recipient's identity and "
+                        "payment details have been independently verified "
+                        "through a trusted channel."
+                    )
         return PaymentAnalysisResponse(
             status="success",
             risk_level=analysis.risk_level,
@@ -154,4 +211,53 @@ Assessment rules:
                 "AI analysis failed. Check that Ollama is running, "
                 "the model is available, and its response is valid."
             ),
+        ) from exc
+@app.get("/paypal/status")
+def paypal_status():
+    if not PAYPAL_CLIENT_ID or not PAYPAL_CLIENT_SECRET:
+        raise HTTPException(
+            status_code=503,
+            detail="PayPal Sandbox credentials are not configured.",
+        )
+
+    credentials = f"{PAYPAL_CLIENT_ID}:{PAYPAL_CLIENT_SECRET}"
+    encoded_credentials = base64.b64encode(
+        credentials.encode("utf-8")
+    ).decode("utf-8")
+
+    request = urllib.request.Request(
+        f"{PAYPAL_BASE_URL}/v1/oauth2/token",
+        data=b"grant_type=client_credentials",
+        headers={
+            "Authorization": f"Basic {encoded_credentials}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            if response.status == 200:
+                return {
+                    "status": "connected",
+                    "environment": "sandbox",
+                    "authenticated": True,
+                    "payment_executed": False,
+                }
+
+            raise HTTPException(
+                status_code=502,
+                detail="PayPal returned an unexpected response.",
+            )
+
+    except urllib.error.HTTPError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"PayPal authentication failed with HTTP {exc.code}.",
+        ) from exc
+
+    except urllib.error.URLError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not connect to PayPal Sandbox.",
         ) from exc

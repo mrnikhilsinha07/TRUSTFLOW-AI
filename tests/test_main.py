@@ -76,7 +76,7 @@ def test_unknown_recipient_is_uncertain(mock_chat):
 
     data = response.json()
 
-    assert data["risk_level"] == "UNCERTAIN"
+    assert data["risk_level"] == "MEDIUM"
     assert data["payment_executed"] is False
     assert any(
         "recipient identity" in warning.lower()

@@ -1,0 +1,86 @@
+{
+    "dataset_name": "TRUSTFLOW AI Payment Risk Evaluation",
+    "model": "qwen3:1.7b",
+    "total_scenarios": 6,
+    "successful_evaluations": 6,
+    "evaluation_errors": 0,
+    "risk_level_matches": 6,
+    "results": [
+        {
+            "id": "PAY001",
+            "expected": "LOW",
+            "predicted": "LOW",
+            "match": true,
+            "warning_signs": [],
+            "explanation": "The recipient is verified, bank details are verified, the amount matches the purchase order, and there are no unusual payment pressures. The detailed invoice supports a legitimate transaction.",
+            "recommended_action": "Proceed with the payment as it is low risk.",
+            "error": null
+        },
+        {
+            "id": "PAY002",
+            "expected": "MEDIUM",
+            "predicted": "MEDIUM",
+            "match": true,
+            "warning_signs": [
+                "Incomplete invoice details"
+            ],
+            "explanation": "The invoice is missing a detailed breakdown of services, but the supplier is established, the amount matches the purchase order, and there is no unusual urgency or bank-detail change. While the incomplete invoice is a concern, the established supplier and matching amount suggest a legitimate transaction. However, the lack of detailed service breakdown introduces a potential risk.",
+            "recommended_action": "Verify the detailed service breakdown of the invoice to ensure accuracy and completeness before proceeding with payment.",
+            "error": null
+        },
+        {
+            "id": "PAY003",
+            "expected": "HIGH",
+            "predicted": "HIGH",
+            "match": true,
+            "warning_signs": [
+                "unverified bank account change",
+                "urgent payment demand"
+            ],
+            "explanation": "The payment involves an unverified bank account change combined with an urgent payment demand, which meets the criteria for a HIGH risk. The recipient's contact information is missing, but the unverified account and immediate payment pressure are significant concerns.",
+            "recommended_action": "Investigate the unverified bank account and verify the recipient's details before proceeding with payment.",
+            "error": null
+        },
+        {
+            "id": "PAY004",
+            "expected": "HIGH",
+            "predicted": "HIGH",
+            "match": true,
+            "warning_signs": [
+                "unknown recipient",
+                "incomplete invoice",
+                "urgent payment demand"
+            ],
+            "explanation": "The payment involves an unknown recipient, an incomplete invoice, and an urgent payment demand, which collectively meet the criteria for a HIGH risk. These factors indicate substantial risk requiring investigation.",
+            "recommended_action": "Investigate further to verify the legitimacy of the payment and ensure proper documentation.",
+            "error": null
+        },
+        {
+            "id": "PAY005",
+            "expected": "MEDIUM",
+            "predicted": "MEDIUM",
+            "match": true,
+            "warning_signs": [
+                "unknown recipient",
+                "missing contact information"
+            ],
+            "explanation": "The invoice description is clear, but the recipient's legal business name and contact information are unavailable. There are no other significant warning signs, and the invoice appears legitimate. However, the unknown recipient and missing contact information indicate a potential risk requiring verification.",
+            "recommended_action": "Verify the recipient's information or check for any additional warning signs before proceeding with the payment.",
+            "error": null
+        },
+        {
+            "id": "PAY006",
+            "expected": "HIGH",
+            "predicted": "HIGH",
+            "match": true,
+            "warning_signs": [
+                "new bank account",
+                "immediate payment demand",
+                "discouraged independent verification"
+            ],
+            "explanation": "The payment involves a new bank account, an immediate payment demand, and discouraged independent verification. These factors indicate substantial risk requiring investigation.",
+            "recommended_action": "Investigate the new bank account and verify the payment request before proceeding.",
+            "error": null
+        }
+    ]
+}
