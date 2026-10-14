@@ -1,7 +1,7 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 from ollama import chat
 
 app = FastAPI(
@@ -14,7 +14,14 @@ MODEL = "qwen3:1.7b"
 
 
 class PaymentRequest(BaseModel):
-    invoice_description: str = Field(min_length=1, max_length=2000)
+    invoice_description: Annotated[
+        str,
+        StringConstraints(
+            strip_whitespace=True,
+            min_length=1,
+            max_length=2000,
+        ),
+    ]
     amount: float = Field(gt=0, le=1_000_000_000)
     currency: str = Field(default="INR", pattern=r"^[A-Z]{3}$")
     recipient: str = Field(min_length=1, max_length=200)
@@ -136,6 +143,9 @@ Assessment rules:
             recommended_action=analysis.recommended_action,
             payment_executed=False,
         )
+
+    except HTTPException:
+        raise
 
     except Exception as exc:
         raise HTTPException(
