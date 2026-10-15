@@ -1,4 +1,5 @@
 import os
+import json
 import base64
 import urllib.request
 import urllib.error
@@ -56,6 +57,21 @@ class PaymentAnalysisResponse(BaseModel):
     explanation: str
     recommended_action: str
     payment_executed: bool
+
+class PayPalOrderRequest(BaseModel):
+    invoice_description: Annotated[
+        str,
+        StringConstraints(
+            strip_whitespace=True,
+            min_length=1,
+            max_length=2000,
+        ),
+    ]
+    amount: float = Field(gt=0, le=1_000_000_000)
+    currency: str = Field(default="INR", pattern=r"^[A-Z]{3}$")
+    recipient: str = Field(min_length=1, max_length=200)
+    warning_details: str = Field(default="", max_length=2000)
+    verification_confirmed: bool = False
 
 
 @app.get("/")
@@ -212,8 +228,8 @@ Assessment rules:
                 "the model is available, and its response is valid."
             ),
         ) from exc
-@app.get("/paypal/status")
-def paypal_status():
+def get_paypal_access_token() -> str:
+    """Authenticate with PayPal and return an OAuth access token."""
     if not PAYPAL_CLIENT_ID or not PAYPAL_CLIENT_SECRET:
         raise HTTPException(
             status_code=503,
@@ -237,18 +253,24 @@ def paypal_status():
 
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
-            if response.status == 200:
-                return {
-                    "status": "connected",
-                    "environment": "sandbox",
-                    "authenticated": True,
-                    "payment_executed": False,
-                }
+            if response.status != 200:
+                raise HTTPException(
+                    status_code=502,
+                    detail="PayPal returned an unexpected response.",
+                )
 
-            raise HTTPException(
-                status_code=502,
-                detail="PayPal returned an unexpected response.",
-            )
+            import json
+
+            token_data = json.loads(response.read().decode("utf-8"))
+            access_token = token_data.get("access_token")
+
+            if not access_token:
+                raise HTTPException(
+                    status_code=502,
+                    detail="PayPal did not return an access token.",
+                )
+
+            return access_token
 
     except urllib.error.HTTPError as exc:
         raise HTTPException(
@@ -261,3 +283,149 @@ def paypal_status():
             status_code=502,
             detail="Could not connect to PayPal Sandbox.",
         ) from exc
+
+
+@app.get("/paypal/status")
+def paypal_status():
+    """Check PayPal Sandbox connectivity and authentication."""
+    get_paypal_access_token()
+
+    return {
+        "status": "connected",
+        "environment": "sandbox",
+        "authenticated": True,
+        "payment_executed": False,
+    }
+
+@app.post("/paypal/create-order")
+def create_paypal_order(order: PayPalOrderRequest):
+    """Create a PayPal Sandbox order after risk checks."""
+
+    # Step 1: Analyze the payment using the existing AI risk analysis.
+    payment = PaymentRequest(
+        invoice_description=order.invoice_description,
+        amount=order.amount,
+        currency=order.currency,
+        recipient=order.recipient,
+        warning_details=order.warning_details,
+    )
+
+    analysis = analyze_payment(payment)
+
+    # Step 2: Block high-risk and uncertain payments.
+    if analysis.risk_level in {"HIGH", "UNCERTAIN"}:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "message": "Payment order blocked by risk assessment.",
+                "risk_level": analysis.risk_level,
+                "recommended_action": analysis.recommended_action,
+            },
+        )
+
+    # Step 3: Require verification confirmation for medium-risk payments.
+    if (
+        analysis.risk_level == "MEDIUM"
+        and not order.verification_confirmed
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": (
+                    "Independent verification must be confirmed "
+                    "before creating this order."
+                ),
+                "risk_level": analysis.risk_level,
+                "recommended_action": analysis.recommended_action,
+                "verification_required": True,
+            },
+        )
+
+    # Step 4: Authenticate with PayPal Sandbox.
+    access_token = get_paypal_access_token()
+
+    # Step 5: Build the PayPal order request.
+    paypal_payload = {
+        "intent": "CAPTURE",
+        "purchase_units": [
+            {
+                "description": order.invoice_description,
+                "amount": {
+                    "currency_code": order.currency,
+                    "value": f"{order.amount:.2f}",
+                },
+            }
+        ],
+        "application_context": {
+            "user_action": "PAY_NOW",
+            "return_url": "https://example.com/paypal/success",
+            "cancel_url": "https://example.com/paypal/cancel",
+        },
+    }
+
+    request = urllib.request.Request(
+        f"{PAYPAL_BASE_URL}/v2/checkout/orders",
+        data=json.dumps(paypal_payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    # Step 6: Create the order in PayPal Sandbox.
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            paypal_response = json.loads(
+                response.read().decode("utf-8")
+            )
+
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+
+        try:
+            paypal_error = json.loads(error_body) if error_body else None
+        except json.JSONDecodeError:
+            paypal_error = {"raw_response": error_body}
+
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": f"PayPal order creation failed with HTTP {exc.code}.",
+                "paypal_error": paypal_error,
+            },
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not connect to PayPal Sandbox.",
+        ) from exc
+
+    # Step 7: Extract the order ID and approval URL.
+    order_id = paypal_response.get("id")
+
+    approval_url = next(
+        (
+            link["href"]
+            for link in paypal_response.get("links", [])
+            if link.get("rel") == "approve"
+        ),
+        None,
+    )
+
+    if not order_id or not approval_url:
+        raise HTTPException(
+            status_code=502,
+            detail="PayPal did not return the expected order details.",
+        )
+
+    return {
+        "status": "created",
+        "order_id": order_id,
+        "approval_url": approval_url,
+        "risk_level": analysis.risk_level,
+        "payment_executed": False,
+        "message": (
+            "Sandbox order created. Payment has not been captured."
+        ),
+    }
