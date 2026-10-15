@@ -73,6 +73,13 @@ class PayPalOrderRequest(BaseModel):
     warning_details: str = Field(default="", max_length=2000)
     verification_confirmed: bool = False
 
+class PayPalCaptureRequest(BaseModel):
+    order_id: str = Field(
+        min_length=1,
+        max_length=100,
+        pattern=r"^[A-Za-z0-9-]+$",
+    )
+
 
 @app.get("/")
 def home():
@@ -428,4 +435,133 @@ def create_paypal_order(order: PayPalOrderRequest):
         "message": (
             "Sandbox order created. Payment has not been captured."
         ),
+    }
+
+@app.post("/paypal/capture-order")
+def capture_paypal_order(request_data: PayPalCaptureRequest):
+    """Verify and capture an approved PayPal Sandbox order."""
+
+    access_token = get_paypal_access_token()
+    order_id = request_data.order_id
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+    # Step 1: Retrieve the order directly from PayPal.
+    get_order_request = urllib.request.Request(
+        f"{PAYPAL_BASE_URL}/v2/checkout/orders/{order_id}",
+        headers=headers,
+        method="GET",
+    )
+
+    try:
+        with urllib.request.urlopen(
+            get_order_request, timeout=15
+        ) as response:
+            order_details = json.loads(
+                response.read().decode("utf-8")
+            )
+
+    except urllib.error.HTTPError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not retrieve PayPal order (HTTP {exc.code}).",
+        ) from exc
+
+    except urllib.error.URLError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not connect to PayPal Sandbox.",
+        ) from exc
+
+    # Step 2: Check the order's actual status.
+    order_status = order_details.get("status")
+
+    if order_status == "COMPLETED":
+        return {
+            "status": "already_completed",
+            "order_id": order_id,
+            "payment_executed": True,
+            "message": "This PayPal order has already been completed.",
+        }
+
+    if order_status != "APPROVED":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "The PayPal order is not approved for capture.",
+                "order_status": order_status,
+                "payment_executed": False,
+            },
+        )
+
+    # Step 3: Capture the approved order.
+    capture_request = urllib.request.Request(
+        f"{PAYPAL_BASE_URL}/v2/checkout/orders/{order_id}/capture",
+        data=b"{}",
+        headers=headers,
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(
+            capture_request, timeout=15
+        ) as response:
+            capture_response = json.loads(
+                response.read().decode("utf-8")
+            )
+
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+
+        try:
+            paypal_error = json.loads(error_body) if error_body else None
+        except json.JSONDecodeError:
+            paypal_error = {"raw_response": error_body}
+
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": f"PayPal capture failed with HTTP {exc.code}.",
+                "paypal_error": paypal_error,
+            },
+        ) from exc
+
+    except urllib.error.URLError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not connect to PayPal Sandbox.",
+        ) from exc
+
+    # Step 4: Report the actual capture result.
+    capture_status = capture_response.get("status")
+
+    capture_id = None
+
+    for purchase_unit in capture_response.get("purchase_units", []):
+        payments = purchase_unit.get("payments", {})
+        captures = payments.get("captures", [])
+
+        if captures:
+            capture_id = captures[0].get("id")
+            break
+
+    if capture_status != "COMPLETED" or not capture_id:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": "PayPal did not confirm a completed capture.",
+                "capture_status": capture_status,
+                "payment_executed": False,
+            },
+        )
+
+    return {
+        "status": "completed",
+        "order_id": order_id,
+        "capture_id": capture_id,
+        "payment_executed": True,
+        "message": "PayPal confirmed that the payment was captured.",
     }

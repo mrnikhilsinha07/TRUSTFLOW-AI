@@ -394,3 +394,167 @@ def test_paypal_order_error_returns_502(
     assert response.status_code == 502
     assert "paypal_error" in response.json()["detail"]
     mock_token.assert_called_once()
+
+@patch("main.get_paypal_access_token", return_value="fake-access-token")
+@patch("main.urllib.request.urlopen")
+def test_capture_approved_order_succeeds(mock_urlopen, mock_token):
+    import json
+    from unittest.mock import MagicMock
+
+    order_response = MagicMock()
+    order_response.read.return_value = json.dumps({
+        "id": "TEST-ORDER-123",
+        "status": "APPROVED",
+    }).encode("utf-8")
+
+    capture_response = MagicMock()
+    capture_response.read.return_value = json.dumps({
+        "id": "TEST-ORDER-123",
+        "status": "COMPLETED",
+        "purchase_units": [{
+            "payments": {
+                "captures": [{"id": "TEST-CAPTURE-456"}]
+            }
+        }],
+    }).encode("utf-8")
+
+    mock_urlopen.side_effect = [
+        MagicMock(__enter__=MagicMock(return_value=order_response),
+                  __exit__=MagicMock(return_value=False)),
+        MagicMock(__enter__=MagicMock(return_value=capture_response),
+                  __exit__=MagicMock(return_value=False)),
+    ]
+
+    response = client.post(
+        "/paypal/capture-order",
+        json={"order_id": "TEST-ORDER-123"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "completed"
+    assert response.json()["capture_id"] == "TEST-CAPTURE-456"
+    assert response.json()["payment_executed"] is True
+    assert mock_urlopen.call_count == 2
+
+
+@patch("main.get_paypal_access_token", return_value="fake-access-token")
+@patch("main.urllib.request.urlopen")
+def test_capture_unapproved_order_is_blocked(mock_urlopen, mock_token):
+    import json
+    from unittest.mock import MagicMock
+
+    order_response = MagicMock()
+    order_response.read.return_value = json.dumps({
+        "id": "TEST-ORDER-123",
+        "status": "CREATED",
+    }).encode("utf-8")
+
+    mock_urlopen.return_value.__enter__.return_value = order_response
+
+    response = client.post(
+        "/paypal/capture-order",
+        json={"order_id": "TEST-ORDER-123"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["payment_executed"] is False
+    assert mock_urlopen.call_count == 1
+
+
+@patch("main.get_paypal_access_token", return_value="fake-access-token")
+@patch("main.urllib.request.urlopen")
+def test_capture_completed_order_is_not_repeated(mock_urlopen, mock_token):
+    import json
+    from unittest.mock import MagicMock
+
+    order_response = MagicMock()
+    order_response.read.return_value = json.dumps({
+        "id": "TEST-ORDER-123",
+        "status": "COMPLETED",
+    }).encode("utf-8")
+
+    mock_urlopen.return_value.__enter__.return_value = order_response
+
+    response = client.post(
+        "/paypal/capture-order",
+        json={"order_id": "TEST-ORDER-123"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "already_completed"
+    assert response.json()["payment_executed"] is True
+    assert mock_urlopen.call_count == 1
+
+
+@patch("main.get_paypal_access_token", return_value="fake-access-token")
+@patch("main.urllib.request.urlopen")
+def test_capture_paypal_error_returns_502(mock_urlopen, mock_token):
+    import io
+    import json
+    import urllib.error
+    from unittest.mock import MagicMock
+
+    order_response = MagicMock()
+    order_response.read.return_value = json.dumps({
+        "id": "TEST-ORDER-123",
+        "status": "APPROVED",
+    }).encode("utf-8")
+
+    mock_urlopen.side_effect = [
+        MagicMock(__enter__=MagicMock(return_value=order_response),
+                  __exit__=MagicMock(return_value=False)),
+        urllib.error.HTTPError(
+            url="https://api-m.sandbox.paypal.com/v2/checkout/orders/TEST-ORDER-123/capture",
+            code=422,
+            msg="Unprocessable Entity",
+            hdrs=None,  # type: ignore[arg-type]
+            fp=io.BytesIO(b'{"name":"UNPROCESSABLE_ENTITY"}'),
+        ),
+    ]
+
+    response = client.post(
+        "/paypal/capture-order",
+        json={"order_id": "TEST-ORDER-123"},
+    )
+
+    assert response.status_code == 502
+    assert "paypal_error" in response.json()["detail"]
+
+
+@patch("main.get_paypal_access_token", return_value="fake-access-token")
+@patch("main.urllib.request.urlopen")
+def test_capture_without_capture_id_is_not_reported_successful(
+    mock_urlopen, mock_token
+):
+    import json
+    from unittest.mock import MagicMock
+
+    order_response = MagicMock()
+    order_response.read.return_value = json.dumps({
+        "id": "TEST-ORDER-123",
+        "status": "APPROVED",
+    }).encode("utf-8")
+
+    capture_response = MagicMock()
+    capture_response.read.return_value = json.dumps({
+        "id": "TEST-ORDER-123",
+        "status": "COMPLETED",
+        "purchase_units": [{
+            "payments": {"captures": []}
+        }],
+    }).encode("utf-8")
+
+    mock_urlopen.side_effect = [
+        MagicMock(__enter__=MagicMock(return_value=order_response),
+                  __exit__=MagicMock(return_value=False)),
+        MagicMock(__enter__=MagicMock(return_value=capture_response),
+                  __exit__=MagicMock(return_value=False)),
+    ]
+
+    response = client.post(
+        "/paypal/capture-order",
+        json={"order_id": "TEST-ORDER-123"},
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["payment_executed"] is False
