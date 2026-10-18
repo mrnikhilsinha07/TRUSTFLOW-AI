@@ -365,8 +365,8 @@ def create_paypal_order(order: PayPalOrderRequest):
         ],
         "application_context": {
             "user_action": "PAY_NOW",
-            "return_url": "https://example.com/paypal/success",
-            "cancel_url": "https://example.com/paypal/cancel",
+            "return_url": "https://networking-days-funeral-advisors.trycloudflare.com/paypal/success",
+            "cancel_url": "https://networking-days-funeral-advisors.trycloudflare.com/paypal/cancel",
         },
     }
 
@@ -564,4 +564,25 @@ def capture_paypal_order(request_data: PayPalCaptureRequest):
         "capture_id": capture_id,
         "payment_executed": True,
         "message": "PayPal confirmed that the payment was captured.",
+    }
+@app.get("/paypal/success")
+def paypal_success(token: str):
+    """Handle the buyer returning from PayPal checkout."""
+    return {
+        "status": "approved_return",
+        "order_id": token,
+        "message": (
+            "Returned from PayPal. "
+            "Use the capture endpoint to verify and capture the order."
+        ),
+    }
+
+
+@app.get("/paypal/cancel")
+def paypal_cancel():
+    """Handle a buyer cancelling PayPal checkout."""
+    return {
+        "status": "cancelled",
+        "payment_executed": False,
+        "message": "The buyer cancelled checkout. No capture was requested.",
     }
