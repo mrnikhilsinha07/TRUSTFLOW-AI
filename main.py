@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, StringConstraints
 from ollama import chat
 
@@ -365,8 +366,8 @@ def create_paypal_order(order: PayPalOrderRequest):
         ],
         "application_context": {
             "user_action": "PAY_NOW",
-            "return_url": "https://networking-days-funeral-advisors.trycloudflare.com/paypal/success",
-            "cancel_url": "https://networking-days-funeral-advisors.trycloudflare.com/paypal/cancel",
+            "return_url": "https://sphere-ellen-linked-search.trycloudflare.com/paypal/success",
+            "cancel_url": "https://sphere-ellen-linked-search.trycloudflare.com/paypal/cancel",
         },
     }
 
@@ -586,3 +587,8 @@ def paypal_cancel():
         "payment_executed": False,
         "message": "The buyer cancelled checkout. No capture was requested.",
     }
+
+# Serve the TRUSTFLOW AI web dashboard without changing existing API endpoints.
+DASHBOARD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard")
+if os.path.isdir(DASHBOARD_DIR):
+    app.mount("/dashboard", StaticFiles(directory=DASHBOARD_DIR, html=True), name="dashboard")

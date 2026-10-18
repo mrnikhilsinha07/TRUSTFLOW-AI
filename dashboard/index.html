@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TRUSTFLOW AI — Payment Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/dashboard/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark"><span></span><span></span><span></span></div><div><strong>TRUSTFLOW<span> AI</span></strong><small>PAYMENT INTELLIGENCE</small></div></div>
+      <div class="nav-label">WORKSPACE</div>
+      <button class="nav-item active" data-target="overview"><span class="nav-icon">◫</span> Overview</button>
+      <button class="nav-item" data-target="risk"><span class="nav-icon">⌁</span> Risk analysis</button>
+      <button class="nav-item" data-target="paypal"><span class="nav-icon">↗</span> PayPal checkout</button>
+      <button class="nav-item" data-target="activity"><span class="nav-icon">◷</span> Activity</button>
+      <div class="sidebar-bottom">
+        <div class="sandbox-card"><div class="sandbox-top"><span class="status-dot"></span> SANDBOX MODE</div><p>Payments are processed in the PayPal test environment.</p></div>
+        <div class="user-mini"><div class="avatar">TF</div><div><strong>Trustflow Admin</strong><small>Local workspace</small></div><span class="more">•••</span></div>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div class="crumb">Workspace <span>/</span> <strong id="crumbTitle">Overview</strong></div><div class="top-actions"><span class="env-pill"><i></i> DEVELOPMENT</span><button class="icon-btn" id="refreshBtn" title="Refresh status">↻</button><div class="avatar small">TF</div></div></header>
+      <section class="page active-page" id="overview">
+        <div class="page-heading"><div><div class="eyebrow">PAYMENT SECURITY PLATFORM</div><h1>Good decisions start with <em>better signals.</em></h1><p>Assess payment risk, verify the context, and move approved transactions through PayPal Sandbox.</p></div><button class="primary-btn" data-go="risk">＋ New risk assessment</button></div>
+        <div class="notice"><div class="notice-icon">✦</div><div><strong>AI-assisted payment review</strong><p>Risk assessments are based on the details you provide. Review the evidence before making a payment decision.</p></div><span class="notice-tag">HUMAN REVIEW REQUIRED</span></div>
+        <div class="section-title"><div><h2>System overview</h2><p>Live checks from your local TRUSTFLOW AI service</p></div><span class="updated" id="lastUpdated">Checking services…</span></div>
+        <div class="metrics">
+          <article class="metric"><div class="metric-head"><span>API SERVICE</span><span class="metric-symbol purple">⌘</span></div><div class="metric-value" id="apiValue">Checking</div><div class="metric-foot"><span class="status-dot" id="apiDot"></span><span id="apiSub">Connecting to backend</span></div></article>
+          <article class="metric"><div class="metric-head"><span>PAYPAL SANDBOX</span><span class="metric-symbol blue">↗</span></div><div class="metric-value" id="paypalValue">Checking</div><div class="metric-foot"><span class="status-dot" id="paypalDot"></span><span id="paypalSub">Verifying credentials</span></div></article>
+          <article class="metric"><div class="metric-head"><span>SESSION REVIEWS</span><span class="metric-symbol green">⌁</span></div><div class="metric-value" id="reviewCount">0</div><div class="metric-foot"><span>Saved in this browser</span></div></article>
+          <article class="metric"><div class="metric-head"><span>CAPTURED IN SESSION</span><span class="metric-symbol amber">✓</span></div><div class="metric-value" id="captureCount">0</div><div class="metric-foot"><span>Confirmed by PayPal response</span></div></article>
+        </div>
+        <div class="content-grid">
+          <article class="panel quick-panel"><div class="panel-heading"><div><h3>Start a workflow</h3><p>Choose what you want to do next.</p></div><span class="spark">✦</span></div><button class="workflow-row" data-go="risk"><span class="workflow-icon purple-bg">⌁</span><span><strong>Analyze payment risk</strong><small>Get a structured AI risk assessment</small></span><b>→</b></button><button class="workflow-row" data-go="paypal"><span class="workflow-icon blue-bg">↗</span><span><strong>Create PayPal order</strong><small>Run a risk check before checkout</small></span><b>→</b></button><button class="workflow-row" data-go="activity"><span class="workflow-icon green-bg">◷</span><span><strong>Review recent activity</strong><small>Inspect results from this browser session</small></span><b>→</b></button></article>
+          <article class="panel"><div class="panel-heading"><div><h3>Risk distribution</h3><p>Assessments completed in this browser session</p></div><span class="mini-badge">SESSION</span></div><div class="risk-bars" id="riskBars"><div class="empty-state">Run a risk assessment to see your distribution.</div></div><div class="panel-footnote">Session-only metrics; not a historical database or fraud-rate estimate.</div></article>
+        </div>
+        <div class="panel recent-panel"><div class="panel-heading"><div><h3>Recent activity</h3><p>Your latest risk reviews and payment outcomes</p></div><button class="text-btn" data-go="activity">View all →</button></div><div id="recentTable"></div></div>
+      </section>
+      <section class="page" id="risk">
+        <div class="page-heading compact"><div><div class="eyebrow">AI RISK ENGINE</div><h1>Analyze a payment</h1><p>Describe the transaction and review the risk signals before taking action.</p></div><span class="feature-chip">OLLAMA · QWEN3</span></div>
+        <div class="content-grid form-layout">
+          <form class="panel form-panel" id="riskForm"><div class="panel-heading"><div><h3>Payment details</h3><p>Enter the information available to you.</p></div><span class="step-badge">01 / REVIEW</span></div>
+            <label>Invoice or payment description <span>Required</span><textarea name="invoice_description" required maxlength="2000" placeholder="e.g. Laptop repair invoice #1042 for diagnostic and replacement parts"></textarea></label>
+            <div class="form-row"><label>Amount<input name="amount" type="number" min="0.01" max="1000000000" step="0.01" required placeholder="125.00"></label><label>Currency<select name="currency"><option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>CAD</option><option>AUD</option></select></label></div>
+            <label>Recipient / merchant <span>Required</span><input name="recipient" required maxlength="200" placeholder="Person or business receiving payment"></label>
+            <label>Additional warning details <small>Optional</small><textarea name="warning_details" maxlength="2000" class="short-textarea" placeholder="Unusual urgency, changed bank details, missing documentation, unexpected request…"></textarea></label>
+            <div class="form-note"><span>ⓘ</span> Do not include passwords, card numbers, or other sensitive payment credentials.</div>
+            <button class="primary-btn full-btn" type="submit" id="analyzeBtn">Run AI risk analysis <span>→</span></button><div class="inline-status" id="riskStatus" role="status"></div>
+          </form>
+          <div class="result-column"><article class="panel result-panel" id="riskResult"><div class="result-placeholder"><div class="placeholder-icon">⌁</div><h3>Your assessment appears here</h3><p>Submit the payment details to receive a risk level, warning signs, explanation, and recommended next step.</p><div class="placeholder-lines"><i></i><i></i><i></i></div></div></article><div class="security-note"><span>◈</span><div><strong>Risk is not a fraud verdict</strong><p>The model evaluates supplied information only. A LOW result does not guarantee a payment is safe.</p></div></div></div>
+        </div>
+      </section>
+      <section class="page" id="paypal">
+        <div class="page-heading compact"><div><div class="eyebrow">PAYPAL INTEGRATION</div><h1>Sandbox checkout</h1><p>Assess first. Create a test order only when the risk policy allows it.</p></div><span class="feature-chip">TEST ENVIRONMENT</span></div>
+        <div class="notice"><div class="notice-icon">↗</div><div><strong>Test payments only</strong><p>Use PayPal Sandbox buyer accounts. No real money should move through this integration.</p></div><button class="secondary-btn" id="checkPaypalBtn">Check connection</button></div>
+        <div class="content-grid form-layout paypal-layout">
+          <form class="panel form-panel" id="orderForm"><div class="panel-heading"><div><h3>Create a test order</h3><p>Risk assessment runs before an order is created.</p></div><span class="step-badge">02 / CHECKOUT</span></div>
+            <label>Invoice description <span>Required</span><textarea name="invoice_description" required maxlength="2000" placeholder="What is this payment for?"></textarea></label>
+            <div class="form-row"><label>Amount<input name="amount" type="number" min="0.01" max="1000000000" step="0.01" required placeholder="25.00"></label><label>Currency<select name="currency"><option>USD</option><option>INR</option><option>EUR</option><option>GBP</option><option>CAD</option><option>AUD</option></select></label></div>
+            <label>Recipient / merchant<input name="recipient" required maxlength="200" placeholder="Recipient name" /></label>
+            <label>Additional warning details <small>Optional</small><textarea name="warning_details" maxlength="2000" class="short-textarea" placeholder="Anything unusual about this request?"></textarea></label>
+            <label class="check-label"><input type="checkbox" name="verification_confirmed"><span><strong>Verification completed</strong><small>Confirm only if you independently verified recipient and payment details through a trusted channel. Required for MEDIUM risk.</small></span></label>
+            <div class="form-note"><span>ⓘ</span> HIGH and UNCERTAIN assessments are blocked by the backend. PayPal may not support every currency in Sandbox.</div>
+            <button class="primary-btn full-btn" type="submit" id="createOrderBtn">Assess & create Sandbox order <span>→</span></button><div class="inline-status" id="orderStatus" role="status"></div>
+          </form>
+          <div class="result-column"><article class="panel" id="orderResult"><div class="result-placeholder"><div class="placeholder-icon blue-text">↗</div><h3>Checkout workflow</h3><p>After a successful risk check, the app will show the PayPal approval link and order ID here.</p><div class="workflow-steps"><div><span>1</span> Risk assessment</div><div><span>2</span> Sandbox order creation</div><div><span>3</span> Buyer approval at PayPal</div><div><span>4</span> Capture approved order</div></div></div></article><div class="security-note"><span>⚠</span><div><strong>Approval is not capture</strong><p>Returning from PayPal does not prove payment completion. Capture is attempted only after the backend verifies the order status.</p></div></div></div>
+        </div>
+        <div class="panel capture-panel"><div class="panel-heading"><div><h3>Capture an approved order</h3><p>Enter a Sandbox order ID after the buyer approves checkout.</p></div></div><form id="captureForm" class="capture-form"><input name="order_id" required maxlength="100" pattern="[A-Za-z0-9-]+" placeholder="PayPal order ID (e.g. 4LX880757T608190G)"><button class="primary-btn" type="submit" id="captureBtn">Verify & capture</button></form><div class="inline-status" id="captureStatus" role="status"></div><div id="captureResult"></div></div>
+      </section>
+      <section class="page" id="activity">
+        <div class="page-heading compact"><div><div class="eyebrow">SESSION LOG</div><h1>Activity</h1><p>Results saved locally in this browser. This is not a server-side audit log.</p></div><button class="secondary-btn danger-btn" id="clearHistoryBtn">Clear session history</button></div>
+        <div class="panel recent-panel"><div class="panel-heading"><div><h3>Recent events</h3><p>Risk reviews, order creation, and capture responses</p></div><span class="mini-badge" id="activityCount">0 EVENTS</span></div><div id="activityTable"></div></div>
+      </section>
+      <footer class="footer"><span>TRUSTFLOW AI <b>·</b> Payment intelligence</span><span>Local prototype · PayPal Sandbox · AI-assisted review</span></footer>
+    </main>
+  </div>
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+  <script src="/dashboard/app.js"></script>
+</body>
+</html>

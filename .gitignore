@@ -29,3 +29,4 @@ htmlcov/
 # Operating system files
 .DS_Store
 Thumbs.db
+t_paypal_auth.pyc
