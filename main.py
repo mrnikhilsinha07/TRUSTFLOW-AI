@@ -229,6 +229,10 @@ Assessment rules:
         raise
 
     except Exception as exc:
+        print(
+            f"AI ANALYSIS ERROR: {type(exc).__name__}: {exc}",
+            flush=True
+        )
         raise HTTPException(
             status_code=503,
             detail=(
@@ -366,8 +370,8 @@ def create_paypal_order(order: PayPalOrderRequest):
         ],
         "application_context": {
             "user_action": "PAY_NOW",
-            "return_url": "https://sphere-ellen-linked-search.trycloudflare.com/paypal/success",
-            "cancel_url": "https://sphere-ellen-linked-search.trycloudflare.com/paypal/cancel",
+           "return_url": "https://utility-cons-healthy-usd.trycloudflare.com/paypal/success",
+            "cancel_url": "https://utility-cons-healthy-usd.trycloudflare.com/paypal/cancel",
         },
     }
 
