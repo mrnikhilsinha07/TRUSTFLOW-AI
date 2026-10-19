@@ -126,6 +126,16 @@ Open the interactive API documentation:
 
 http://127.0.0.1:8000/docs
 
+## Dashboard
+
+TRUSTFLOW AI includes a browser-based dashboard for payment risk analysis and PayPal Sandbox testing.
+
+Start the backend:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+uvicorn main:app --reload
+
 ## API Endpoints
 
 | Method | Endpoint | Purpose |
@@ -180,19 +190,24 @@ The latest recorded evaluation achieved a 100% risk-level match rate across thos
 
 ```text
 TRUSTFLOW-AI/
-├── main.py
-├── requirements.txt
-├── test_paypal_auth.py
-├── tests/
-│   └── test_main.py
-├── evaluation/
-│   ├── payment_scenarios.json
-│   ├── evaluate_model.py
-│   └── evaluation_results.json
-├── .env.example
-├── .gitignore
-└── README.md
-```
+|-- main.py
+|-- requirements.txt
+|-- README.md
+|-- INSTALLATION.md
+|-- LICENSE
+|-- .env.example
+|-- .gitignore
+|-- test_paypal_auth.py
+|-- tests/
+|   `-- test_main.py
+|-- dashboard/
+|   |-- index.html
+|   |-- styles.css
+|   `-- app.js
+`-- evaluation/
+    |-- payment_scenarios.json
+    |-- evaluate_model.py
+    `-- evaluation_results.json
 
 The exact files in your local repository may differ as the project develops.
 
